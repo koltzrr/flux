@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flux</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&family=PT+Serif&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+        #add-file {
+            position: fixed;
+            bottom: 75px;
+            right: 25px;
+            background-color: #6200ea;
+            color: #fff;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            z-index: 1000;
+            transition: box-shadow 0.3s ease;
+        }
+        #add-file:hover {
+            box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.3);
+        }
+        #text-display {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding-top: 150px;
+            text-align: center;
+        }
+        #primary-text {
+            font-size: 60px;
+            font-family: 'PT Serif', serif;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        #secondary-text {
+            font-size: 25px;
+            font-family: 'PT Serif', serif;
+            padding-top: 50px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        #bottom-bar {
+            width: 100%;
+            height: 50px;
+            background-color: #6200ea;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            bottom: 0;
+            z-index: 999;
+        }
+        #bottom-bar span {
+            margin: 0 10px;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease, cursor 0.3s ease;
+        }
+        #bottom-bar span.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #bottom-bar #speed-indicator {
+            font-size: 18px;
+            margin: 0 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Botón de carga -->
+    <div id="add-file">
+        <span class="material-icons">add</span>
+    </div>
+
+    <!-- Contenedor de texto -->
+    <div id="text-display">
+        <div id="primary-text">Cargue un archivo para comenzar</div>
+        <div id="secondary-text"></div>
+    </div>
+
+    <!-- Barra inferior -->
+    <div id="bottom-bar">
+        <span id="decrease-speed" class="material-icons">chevron_left</span>
+        <span id="speed-indicator">2x</span>
+        <span id="increase-speed" class="material-icons">chevron_right</span>
+    </div>
+
+    <script>
+        const primaryText = document.getElementById("primary-text");
+        const secondaryText = document.getElementById("secondary-text");
+        const speedIndicator = document.getElementById("speed-indicator");
+        const decreaseSpeed = document.getElementById("decrease-speed");
+        const increaseSpeed = document.getElementById("increase-speed");
+        const addFile = document.getElementById("add-file");
+
+        let textContent = [];
+        let displaySpeed = 2000; // Default speed: 2 seconds
+        let intervalId = null;
+        let currentMode = "words";
+
+        const MIN_SPEED = 1000; // 1 second
+        const MAX_SPEED = 4000; // 4 seconds
+
+        // Mostrar texto con transición
+        function showText(text, element) {
+            element.textContent = text;
+            element.style.opacity = 1;
+            setTimeout(() => {
+                element.style.opacity = 0;
+            }, displaySpeed - 500);
+        }
+
+        // Modo Palabras
+        function startWordsMode() {
+            clearInterval(intervalId);
+            if (textContent.length === 0) return;
+
+            primaryText.style.fontSize = "45px";
+            secondaryText.style.opacity = 0; // Ocultar texto secundario
+            let currentIndex = 0;
+
+            intervalId = setInterval(() => {
+                if (currentIndex >= textContent.length) {
+                    currentIndex = 0;
+                }
+                showText(textContent[currentIndex], primaryText);
+                currentIndex++;
+            }, displaySpeed);
+        }
+
+        // Modo Sílabas
+        function startSyllablesMode() {
+            clearInterval(intervalId);
+            if (textContent.length === 0) return;
+
+            primaryText.style.fontSize = "60px";
+            let currentWordIndex = 0;
+            let currentSyllableIndex = 0;
+
+            const words = textContent.map(word => ({
+                syllables: word.split("-"),
+                fullWord: word.replace(/-/g, "")
+            }));
+
+            intervalId = setInterval(() => {
+                const currentWord = words[currentWordIndex];
+                if (currentSyllableIndex === 0) {
+                    secondaryText.textContent = currentWord.fullWord;
+                    secondaryText.style.opacity = 1;
+                }
+
+                showText(currentWord.syllables[currentSyllableIndex], primaryText);
+
+                currentSyllableIndex++;
+
+                if (currentSyllableIndex >= currentWord.syllables.length) {
+                    currentSyllableIndex = 0;
+                    currentWordIndex++;
+
+                    setTimeout(() => {
+                        secondaryText.style.opacity = 0;
+                    }, displaySpeed - 500);
+
+                    if (currentWordIndex >= words.length) {
+                        currentWordIndex = 0;
+                    }
+                }
+            }, displaySpeed);
+        }
+
+        // Modo Frases
+        function startPhrasesMode() {
+            clearInterval(intervalId);
+            if (textContent.length === 0) return;
+
+            primaryText.style.fontSize = "45px";
+            secondaryText.style.opacity = 0; // Ocultar texto secundario
+            const phrases = textContent.join(" ").split(" - ");
+            let currentIndex = 0;
+
+            intervalId = setInterval(() => {
+                if (currentIndex >= phrases.length) {
+                    currentIndex = 0;
+                }
+                showText(phrases[currentIndex], primaryText);
+                currentIndex++;
+            }, displaySpeed);
+        }
+
+        // Cargar archivo
+        addFile.addEventListener("click", () => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".txt";
+            input.style.display = "none";
+
+            input.addEventListener("change", async (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const text = await file.text();
+                    textContent = text.split(/\s+/); // Separar por palabras
+                    if (text.includes(" - ")) {
+                        currentMode = "phrases";
+                        startPhrasesMode();
+                    } else if (text.includes("-")) {
+                        currentMode = "syllables";
+                        startSyllablesMode();
+                    } else {
+                        currentMode = "words";
+                        startWordsMode();
+                    }
+                }
+            });
+
+            document.body.appendChild(input);
+            input.click();
+            document.body.removeChild(input);
+        });
+
+        // Ajustar velocidad y deshabilitar botones según el rango
+        function adjustSpeed(amount) {
+            displaySpeed = Math.min(MAX_SPEED, Math.max(MIN_SPEED, displaySpeed + amount));
+            speedIndicator.textContent = `${displaySpeed / 1000}x`;
+
+            decreaseSpeed.classList.toggle("disabled", displaySpeed === MIN_SPEED);
+            increaseSpeed.classList.toggle("disabled", displaySpeed === MAX_SPEED);
+
+            if (currentMode === "words") startWordsMode();
+            if (currentMode === "syllables") startSyllablesMode();
+            if (currentMode === "phrases") startPhrasesMode();
+        }
+
+        decreaseSpeed.addEventListener("click", () => {
+            if (displaySpeed > MIN_SPEED) adjustSpeed(-1000);
+        });
+
+        increaseSpeed.addEventListener("click", () => {
+            if (displaySpeed < MAX_SPEED) adjustSpeed(1000);
+        });
+    </script>
+</body>
+</html>
